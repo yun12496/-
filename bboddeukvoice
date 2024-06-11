@@ -5,18 +5,19 @@
 //서보모터
 #include <Servo.h>
 #define servoPin 10
+#define increment 30        // 돌아가는 각도 설정
 Servo servo;
 int angle=0;
 
-#define PIN_PUMP 13          // 수중 펌프모터 연결 핀 번호 
+#define PIN_PUMP 13          // 수중 펌프모터 연결 핀 번호
 
-//온습도센서 측정
+//쿨링팬
 #include "DHT.h"
 #define DHTPIN 8
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
-int r=11;                   // 쿨링팬 릴레이 모듈 핀 번호 
-int PUMP=13;                // 펌프 릴레이 모듈 핀 번호 
+int r=11;                   // 쿨링팬 릴레이 모듈 핀 번호
+int PUMP=13;                // 펌프 릴레이 모듈 핀 번호
 
 // 모듈과의 통신을 위한 SoftwareSerial 객체 생성.
 // 2번핀에 모듈의 Tx, 3번핀에 Rx가 연결됨.
@@ -27,8 +28,7 @@ SoftwareSerial uart_voice(2, 3);
 Mecha_VoiceRecognition voice(&uart_voice);
 
 void setup() {
-  
-  
+  //쿨링팬
   pinMode(r,OUTPUT);
   dht.begin();
 
@@ -43,7 +43,7 @@ void setup() {
   Serial.begin(9600);
 
   // voice 객체 설정 및 초기화
-  voice.setDebugOn(&Serial);  // 디버깅 ON, 디버깅을 위한 통신 객체 전달
+  voice.setDebugOn(&Serial);      // 디버깅 ON, 디버깅을 위한 통신 객체 전달
   voice.setGroup(VOICE_GROUP_1);  // 인식에 사용할 그룹을 1로 설정
   voice.init();                   // voice 객체 초기화
 
@@ -62,76 +62,64 @@ void loop() {
   // VOICE_INSTRUCTION_ERROR: 예외 발생
 
   VOICE_InstructionTypeDef response = voice.getInstruction();
+
   switch (response) {
     case VOICE_INSTRUCTION_1: // 1번 명령 인식됨. "틀어"
-      
-      //수중 펌프모터 
+
+      //수중펌프모터
         Serial.println("틀어");
         
         digitalWrite(PUMP,HIGH);
         delay(1000);
       break;
 
-
-
     case VOICE_INSTRUCTION_2: // 2번 명령 인식됨. "멈춰"
-      
-      //수중 펌프모터 
+
+      //수중펌프모터
       Serial.println("멈춰");
       
       digitalWrite(PUMP,LOW);
       delay(1000);
       break;
 
-
-
     case VOICE_INSTRUCTION_3: // 3번 명령 인식됨. "올려"
-      
-      //서보모터
+
+      // 서보모터
       Serial.println("올려");
 
-      for ( angle=0; angle<180; angle++ ) { 
-        servo.write(angle=30);
-        delay(10);
+      for ( angle=0; angle<=50; angle+=increment ) { 
+        servo.write(angle);
+        delay(1000);
         break;
-        }
+      }
 
-      
       break;
-
 
     case VOICE_INSTRUCTION_4: // 4번 명령 인식됨. "내려"
 
-      //서보모터
+      // 서보모터
       Serial.println("내려");
       
-
-      for(angle=180; angle>0; angle--){
-        servo.write(angle=-30);
-        delay(10);
+      for(angle=50; angle>0; angle-=increment){
+        servo.write(angle);
+        delay(1000);
         break;
       }
-      
+
       break;
       
-
-
     case VOICE_INSTRUCTION_5: // 5번 명령 인식됨. "환풍"
-
-      //쿨링팬
-      Serial.println("환풍");
       
+      Serial.println("환풍");
 
-      //온습도 측정 
+      // 쿨링팬
       while(true){
-        
         int h=dht.readHumidity();
-        
         Serial.print(F("Humidity:"));
         Serial.print(h);
         Serial.println(F("%"));
         
-        
+
         if(h<=70){
           digitalWrite(r, LOW);
           break;
@@ -140,8 +128,6 @@ void loop() {
         
         else {
           digitalWrite(r,HIGH);
-          
-          
           break;
         }
 
